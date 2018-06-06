@@ -15,13 +15,6 @@ class PrimitiveModel(Model):
 	val_float = FloatField('f')
 
 
-class PrimitiveSubModel(ObjectSubModel):
-	val_int = IntField('i')
-	val_str = StrField('s')
-	val_bool = BoolField('b')
-	val_float = FloatField('f')
-
-
 class ContainerModel(Model):
 	MODEL_NAME = 'cm'
 	val_int_list = ListField('il', IntField(''))
@@ -35,6 +28,13 @@ class NestedContainerModel(Model):
 	val_list_list = ListField('ll', ListField('', IntField))
 	val_list_map = ListField('lm', DictField('', IntField, key_converter=int))
 	val_map_map = DictField('mm', DictField('', StrField))
+
+
+class PrimitiveSubModel(ObjectSubModel):
+	val_int = IntField('i')
+	val_str = StrField('s')
+	val_bool = BoolField('b')
+	val_float = FloatField('f')
 
 
 class NestedPrimitiveModel(Model):
