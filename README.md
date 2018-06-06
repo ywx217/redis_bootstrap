@@ -1,3 +1,6 @@
+模块还在开发中……
+
+
 # 开发目的
 
 为了更方便地在Python中使用Redis的功能，开发本模块，以提高工作效率。
@@ -86,3 +89,14 @@ class NestedPrimitiveModel(Model):
     MODEL_NAME = 'npm'
     val_list_map = ListField('lm', DictField('', PrimitiveSubModel))
 ```
+
+
+# Roadmap
+
+模块还在开发中，这里列一下后面的路线：
+
+* 实际逻辑中使用（这当然是坠重要的啦）
+* model中增加TTL语义
+* watch、pipeline、exec优化
+    * 失败重试
+    * 超时
