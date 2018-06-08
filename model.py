@@ -258,6 +258,8 @@ class Model(dict):
 
 	def save(self, redis_context):
 		# save kv using hmset
+		if not redis_context.is_in_transaction():
+			raise ValueError('Saving model out of transaction.')
 		save_map = self.save_mapping()
 		save_map = flatten(save_map)
 		redis_context.hmset(self.__name, save_map)

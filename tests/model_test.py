@@ -53,13 +53,13 @@ class ModelTest(BaseTest):
 		self.assertFalse(check_redis_key('foo$bar'))
 
 	def testModelSaving(self):
-		model = PrimitiveModel(1, False)
-		model.val_int = 1
-		model.val_str = 'foo'
-		model.val_bool = False
-		model.val_float = 1234.56
-		model.save(self.context)
-		self.context.flush()
+		with self.context:
+			model = PrimitiveModel(1, False)
+			model.val_int = 1
+			model.val_str = 'foo'
+			model.val_bool = False
+			model.val_float = 1234.56
+			model.save(self.context)
 
 		loaded_model = PrimitiveModel.load(self.context, 1, True)
 		self.assertEqual(model.val_int, loaded_model.val_int)
@@ -68,13 +68,13 @@ class ModelTest(BaseTest):
 		self.assertEqual(model.val_float, loaded_model.val_float)
 
 	def testContainerModel(self):
-		model = ContainerModel.load_mapping({}, 1, False)
-		model.val_int_list.extend([1, 2, 3])
-		model.val_str_list.extend(map(str, [1, 2, 3]))
-		model.val_int_map[10] = 10
-		model.val_str_map['10'] = '10'
-		model.save(self.context)
-		self.context.flush()
+		with self.context:
+			model = ContainerModel.load_mapping({}, 1, False)
+			model.val_int_list.extend([1, 2, 3])
+			model.val_str_list.extend(map(str, [1, 2, 3]))
+			model.val_int_map[10] = 10
+			model.val_str_map['10'] = '10'
+			model.save(self.context)
 
 		loaded_model = ContainerModel.load(self.context, 1, True)
 		self.assertEqual(model.val_int_list, loaded_model.val_int_list)
@@ -83,12 +83,12 @@ class ModelTest(BaseTest):
 		self.assertEqual(model.val_str_map, loaded_model.val_str_map)
 
 	def testNestedModel(self):
-		model = NestedContainerModel.load_mapping({}, 1, False)
-		model.val_list_list.append([1, 2, 3])
-		model.val_list_map.append({1: 2})
-		model.val_map_map['foo'] = {'bar': 'baz'}
-		model.save(self.context)
-		self.context.flush()
+		with self.context:
+			model = NestedContainerModel.load_mapping({}, 1, False)
+			model.val_list_list.append([1, 2, 3])
+			model.val_list_map.append({1: 2})
+			model.val_map_map['foo'] = {'bar': 'baz'}
+			model.save(self.context)
 
 		loaded_model = NestedContainerModel.load(self.context, 1, True)
 		self.assertEqual(model.val_list_list, loaded_model.val_list_list)
@@ -96,19 +96,19 @@ class ModelTest(BaseTest):
 		self.assertEqual(model.val_map_map, loaded_model.val_map_map)
 
 	def testNestedCustomType(self):
-		model = NestedPrimitiveModel.load_mapping({}, 1, False)
-		model.val_list_map.append({})
-		model.val_list_map.append({})
-		model.val_list_map[0]['item_in_0'] = {'i': 1, 's': 's', 'b': False, 'f': 100.35}
-		model.val_list_map[1]['item_in_1'] = PrimitiveSubModel()
-		sub_model = PrimitiveSubModel()
-		sub_model.val_int = 2
-		sub_model.val_str = 'sss'
-		sub_model.val_bool = True
-		sub_model.val_float = -0.332
-		model.val_list_map[1]['another_item_in_1'] = sub_model
-		model.save(self.context)
-		self.context.flush()
+		with self.context:
+			model = NestedPrimitiveModel.load_mapping({}, 1, False)
+			model.val_list_map.append({})
+			model.val_list_map.append({})
+			model.val_list_map[0]['item_in_0'] = {'i': 1, 's': 's', 'b': False, 'f': 100.35}
+			model.val_list_map[1]['item_in_1'] = PrimitiveSubModel()
+			sub_model = PrimitiveSubModel()
+			sub_model.val_int = 2
+			sub_model.val_str = 'sss'
+			sub_model.val_bool = True
+			sub_model.val_float = -0.332
+			model.val_list_map[1]['another_item_in_1'] = sub_model
+			model.save(self.context)
 
 		loaded_model = NestedPrimitiveModel.load(self.context, 1, True)
 		self.assertEqual(model.val_list_map, loaded_model.val_list_map)
