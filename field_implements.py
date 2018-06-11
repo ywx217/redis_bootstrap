@@ -66,6 +66,8 @@ class SubModelField(Field):
 			return
 		val = obj[self.var_name]
 		if val is None:
+			if hasattr(self.model_class, 'save_none'):
+				save_map[self.redis_key] = self.model_class.save_none()
 			return
 		save_map[self.redis_key] = val.save_mapping()
 

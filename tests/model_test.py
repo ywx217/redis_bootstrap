@@ -134,7 +134,21 @@ class ModelTest(BaseTest):
 
 		loaded_model = ModelWithSubModel.load(self.context, 1, True)
 		self.assertEqual(model.o1, loaded_model.o1)
+		self.assertEqual(loaded_model.o1.val_int, 2)
 		self.assertIsNotNone(model.o1)
 		self.assertIsNotNone(loaded_model.o1)
 		self.assertIsNone(model.o2)
 		self.assertIsNone(loaded_model.o2)
+
+		model = ModelWithSubModel.load(self.context, 1, False)
+		with self.context:
+			self.assertIsNotNone(model.o1)
+			model.o1 = None
+			model.o2 = PrimitiveSubModel()
+			model.o2.val_int = 3
+			model.save(self.context)
+
+		loaded_model = ModelWithSubModel.load(self.context, 1, True)
+		self.assertIsNone(loaded_model.o1)
+		self.assertIsNotNone(loaded_model.o2)
+		self.assertEqual(loaded_model.o2.val_int, 3)

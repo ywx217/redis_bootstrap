@@ -36,6 +36,7 @@ class SubModel(object):
 
 class ObjectSubModel(SubModel, dict):
 	__metaclass__ = ModelMetaclass
+	IS_NONE = '__is_none'
 
 	def __init__(self):
 		SubModel.__init__(self)
@@ -56,13 +57,22 @@ class ObjectSubModel(SubModel, dict):
 		self[key] = value
 
 	def save_mapping(self):
-		save_map = {}
+		save_map = {
+			self.IS_NONE: 0,
+		}
 		for field in self.__fields__:
 			field.save(save_map, self)
 		return save_map
 
 	@classmethod
+	def save_none(cls):
+		return {cls.IS_NONE: 1}
+
+	@classmethod
 	def load_mapping(cls, mapping):
+		is_none = bool(int(mapping.get(cls.IS_NONE, 0)))
+		if is_none:
+			return None
 		obj = cls()
 		for field in cls.__fields__:
 			field.load(mapping, obj)
@@ -175,7 +185,7 @@ class ListModel(ContainerSubModel, list):
 			field.load(mapping, obj)
 		for i, v in enumerate(obj):
 			if v is None:
-				raise ValueError('%s[%d] is None' % (cls.__name__, i))
+				raise ValueError('%s[%d] is not initialized' % (cls.__name__, i))
 		return obj
 
 
