@@ -42,6 +42,12 @@ class NestedPrimitiveModel(Model):
 	val_list_map = ListField('lm', DictField('', PrimitiveSubModel))
 
 
+class ModelWithSubModel(Model):
+	MODEL_NAME = 'mwsm'
+	o1 = SubModelField('o1', PrimitiveSubModel, default=None)
+	o2 = SubModelField('o2', PrimitiveSubModel, default=None)
+
+
 class ModelTest(BaseTest):
 	def testFieldName(self):
 		self.assertTrue(check_redis_key('foo_bar'))
@@ -112,3 +118,17 @@ class ModelTest(BaseTest):
 
 		loaded_model = NestedPrimitiveModel.load(self.context, 1, True)
 		self.assertEqual(model.val_list_map, loaded_model.val_list_map)
+
+	def testModelWithSubModel(self):
+		with self.context:
+			model = ModelWithSubModel.load_mapping({}, 1, False)
+			model.o1 = PrimitiveSubModel()
+			model.o1.val_int = 2
+			model.save(self.context)
+
+		loaded_model = ModelWithSubModel.load(self.context, 1, True)
+		self.assertEqual(model.o1, loaded_model.o1)
+		self.assertIsNotNone(model.o1)
+		self.assertIsNotNone(loaded_model.o1)
+		self.assertIsNone(model.o2)
+		self.assertIsNone(loaded_model.o2)

@@ -20,6 +20,10 @@ class RedisContext(object):
 	def is_in_transaction(self):
 		return self._in_transaction
 
+	def flush_and_begin(self):
+		self.flush()
+		self.begin()
+
 	def begin(self):
 		if self._in_transaction:
 			raise RedisError('already in transaction')

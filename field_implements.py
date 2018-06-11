@@ -64,7 +64,10 @@ class SubModelField(Field):
 	def save(self, save_map, obj):
 		if self.redis_key is DEFAULT_PLACEHOLDER:
 			return
-		save_map[self.redis_key] = obj[self.var_name].save_mapping()
+		val = obj[self.var_name]
+		if val is None:
+			return
+		save_map[self.redis_key] = val.save_mapping()
 
 	def convert(self, val):
 		if val is None:
