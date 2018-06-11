@@ -44,8 +44,8 @@ class NestedPrimitiveModel(Model):
 
 class ModelWithSubModel(Model):
 	MODEL_NAME = 'mwsm'
-	o1 = SubModelField('o1', PrimitiveSubModel, default=None)
-	o2 = SubModelField('o2', PrimitiveSubModel, default=None)
+	o1 = SubModelField('o1', PrimitiveSubModel)
+	o2 = SubModelField('o2', PrimitiveSubModel)
 
 
 class ModelTest(BaseTest):
@@ -67,11 +67,17 @@ class ModelTest(BaseTest):
 			model.val_float = 1234.56
 			model.save(self.context)
 
+		self.assertTrue(PrimitiveModel.exists(self.context, 1))
 		loaded_model = PrimitiveModel.load(self.context, 1, True)
 		self.assertEqual(model.val_int, loaded_model.val_int)
 		self.assertEqual(model.val_str, loaded_model.val_str)
 		self.assertEqual(model.val_bool, loaded_model.val_bool)
 		self.assertEqual(model.val_float, loaded_model.val_float)
+
+	def testModelLoadNotExist(self):
+		loaded_model = PrimitiveModel.load(self.context, 'not-exist', True, can_be_none=True)
+		self.assertIsNone(loaded_model)
+		self.assertFalse(PrimitiveModel.exists(self.context, 'not-exist'))
 
 	def testContainerModel(self):
 		with self.context:

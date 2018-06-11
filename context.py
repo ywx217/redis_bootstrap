@@ -46,6 +46,19 @@ class RedisContext(object):
 	def watch(self, *keys):
 		self.pipeline.watch(*keys)
 
+	# --------------- other ops ---------------
+	def scan_iter(self, match=None, count=None):
+		return self._redis.scan_iter(match=match, count=count)
+
+	def exists(self, name):
+		return self._redis.exists(name)
+
+	def delete(self, *names):
+		if not self._in_transaction:
+			self._redis.delete(*names)
+		else:
+			self.pipeline.delete(*names)
+
 	# --------------- hash map ---------------
 	def hget(self, name, key, watch=True):
 		if watch:

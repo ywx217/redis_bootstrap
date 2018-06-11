@@ -273,10 +273,12 @@ class Model(dict):
 		return save_map
 
 	@classmethod
-	def load(cls, redis_context, index, read_only=False):
+	def load(cls, redis_context, index, read_only=False, can_be_none=False):
 		# load from redis using hgetall
 		name = cls.get_name(index)
 		m = redis_context.hgetall(name, watch=not read_only)
+		if can_be_none and not m:
+			return None
 		m = inflate(m)
 		return cls.load_mapping(m, index, read_only)
 
@@ -286,3 +288,11 @@ class Model(dict):
 		for field in cls.__fields__:
 			field.load(mapping, obj)
 		return obj
+
+	@classmethod
+	def exists(cls, redis_context, index):
+		return redis_context.exists(cls.get_name(index))
+
+	@classmethod
+	def delete(cls, redis_context, index):
+		return redis_context.delete(cls.get_name(index))
