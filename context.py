@@ -50,6 +50,9 @@ class RedisContext(object):
 	def scan_iter(self, match=None, count=None):
 		return self._redis.scan_iter(match=match, count=count)
 
+	def incr(self, key, amount=1):
+		return self._redis.incr(key, amount)
+
 	def exists(self, name):
 		return self._redis.exists(name)
 

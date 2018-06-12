@@ -48,6 +48,22 @@ class ModelWithSubModel(Model):
 	o2 = SubModelField('o2', PrimitiveSubModel)
 
 
+class ContainerWithSubModel(Model):
+	MODEL_NAME = 'cwsm'
+
+	val_list = ListField('l', PrimitiveSubModel)
+
+
+class AnotherBaseClass(object):
+	def __init__(self):
+		super(AnotherBaseClass, self).__init__()
+
+
+class MultiInherit(Model, AnotherBaseClass):
+	MODEL_NAME = 'mi'
+	val_int = IntField('i')
+
+
 class ModelTest(BaseTest):
 	def testFieldName(self):
 		self.assertTrue(check_redis_key('foo_bar'))
@@ -80,6 +96,17 @@ class ModelTest(BaseTest):
 		self.assertFalse(PrimitiveModel.exists(self.context, 'not-exist'))
 
 	def testContainerModel(self):
+		with self.context:
+			model = ContainerModel.load_mapping({}, 1, False)
+			self.assertEqual([], model.val_int_list)
+			self.assertEqual([], model.val_str_list)
+			model.save(self.context)
+		loaded_model = ContainerModel.load(self.context, 1, True)
+		self.assertEqual([], loaded_model.val_int_list)
+		self.assertEqual([], loaded_model.val_str_list)
+		self.assertEqual({}, loaded_model.val_int_map)
+		self.assertEqual({}, loaded_model.val_str_map)
+
 		with self.context:
 			model = ContainerModel.load_mapping({}, 1, False)
 			model.val_int_list.extend([1, 2, 3])
@@ -152,3 +179,27 @@ class ModelTest(BaseTest):
 		self.assertIsNone(loaded_model.o1)
 		self.assertIsNotNone(loaded_model.o2)
 		self.assertEqual(loaded_model.o2.val_int, 3)
+
+	def testContainerWithSubModel(self):
+		with self.context:
+			model = ContainerWithSubModel.load_mapping({}, 1, False)
+			model.val_list.extend([None] * 3)
+			model.val_list[0] = PrimitiveSubModel()
+			model.val_list[0].val_int = 5
+			model.save(self.context)
+
+		loaded_model = ContainerWithSubModel.load(self.context, 1, True)
+		self.assertEqual(3, len(loaded_model.val_list))
+		self.assertEqual(5, loaded_model.val_list[0].val_int)
+		self.assertIsNone(loaded_model.val_list[1])
+		self.assertIsNone(loaded_model.val_list[2])
+
+	def testMultiInheritance(self):
+		with self.context:
+			model = MultiInherit.load_mapping({}, 1, False)
+			model.val_int = 10
+			model.save(self.context)
+
+		loaded_model = MultiInherit.load(self.context, 1, True)
+		self.assertEqual(loaded_model.val_int, model.val_int)
+

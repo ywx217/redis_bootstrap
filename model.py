@@ -176,16 +176,16 @@ class ListModel(ContainerSubModel, list):
 		obj = cls()
 		length = int(mapping.get(cls.FN_LENGTH, 0))
 		if not length:
-			return
+			return []
 		obj.extend((None,) * length)
 		field = cls.VAL_FIELD
 		for i in xrange(length):
 			field.var_name = i
 			field.redis_key = str(i)
 			field.load(mapping, obj)
-		for i, v in enumerate(obj):
-			if v is None:
-				raise ValueError('%s[%d] is not initialized' % (cls.__name__, i))
+		# for i, v in enumerate(obj):
+		# 	if v is None:
+		# 		raise ValueError('%s[%d] is not initialized' % (cls.__name__, i))
 		return obj
 
 
@@ -300,9 +300,15 @@ class Model(dict):
 		return obj
 
 	@classmethod
+	def watch_keys(cls, redis_context, *indexes):
+		indexes = map(cls.get_name, indexes)
+		return redis_context.watch_key(*indexes)
+
+	@classmethod
 	def exists(cls, redis_context, index):
 		return redis_context.exists(cls.get_name(index))
 
 	@classmethod
-	def delete(cls, redis_context, index):
-		return redis_context.delete(cls.get_name(index))
+	def delete(cls, redis_context, *indexes):
+		indexes = map(cls.get_name, indexes)
+		return redis_context.delete(*indexes)
