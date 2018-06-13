@@ -302,7 +302,7 @@ class Model(dict):
 	@classmethod
 	def watch_keys(cls, redis_context, *indexes):
 		indexes = map(cls.get_name, indexes)
-		return redis_context.watch_key(*indexes)
+		return redis_context.watch(*indexes)
 
 	@classmethod
 	def exists(cls, redis_context, index):
