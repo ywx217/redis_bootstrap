@@ -16,3 +16,5 @@ class BaseTest(unittest.TestCase):
 		self.context = redis_manager.create_context()
 		redis_manager.get_redis().flushdb()
 
+	def newContext(self):
+		return RedisContext(self.context._redis)

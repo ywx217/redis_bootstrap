@@ -62,3 +62,56 @@ class ContextTest(BaseTest):
 		self.context.begin()
 		self.context.flush()
 
+	def _modInContext(self):
+		with self.context:
+			# MULTI
+			# outer HSET
+			self.context._redis.hset('foo', '1', '1')
+			# HSET
+			self.context.hset('foo', '1', '1')
+			# EXEC
+
+	def _noModInContext(self):
+		with self.context:
+			self.context.hset('foo', '1', '1')
+
+	def testWatchError(self):
+		self.context.watch('foo')
+		self.assertRaises(WatchError, self._modInContext)
+
+	def testDoubleMulti(self):
+		self.context.watch('foo')
+
+		with self.context:
+			self.context.hset('another', '1', '1')
+
+		# all UNWATCHed
+		with self.context:
+			self.context._redis.hset('foo', '1', '1')
+			self.context.hset('foo', '1', '1')
+
+		# re-WATCH
+		self.context.watch('foo')
+		self.assertRaises(WatchError, self._modInContext)
+
+	def testModifyBeforeBeginTransaction(self):
+		self.context.watch('foo')
+		self.context._redis.hset('foo', '1', '1')
+
+		self.assertRaises(WatchError, self._noModInContext)
+
+	def testDoubleContextWatch(self):
+		another_context = self.newContext()
+		self.context.watch('foo')
+		another_context.watch('foo')
+
+		self.context._redis.hset('foo', '1', '1')
+
+		self.assertRaises(WatchError, self._noModInContext)
+
+		def _watchError():
+			with another_context:
+				another_context.hset('foo', '1', '1')
+
+		self.assertRaises(WatchError, _watchError)
+
