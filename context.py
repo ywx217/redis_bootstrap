@@ -1,21 +1,66 @@
 # coding=utf-8
 __author__ = 'ywx217@gmail.com'
+
 import redis
+from redis import RedisError
 
 
 class RedisContext(object):
 	def __init__(self, redis_client):
 		self._redis = redis_client
 		self.pipeline = redis_client.pipeline()
+		self._in_transaction = False
+
+	def __enter__(self):
+		self.begin()
+
+	def __exit__(self, exc_type, exc_val, exc_tb):
+		self.flush()
+
+	def is_in_transaction(self):
+		return self._in_transaction
+
+	def flush_and_begin(self):
+		self.flush()
+		self.begin()
+
+	def begin(self):
+		if self._in_transaction:
+			raise RedisError('already in transaction')
+		self._in_transaction = True
+		self.pipeline.multi()
 
 	def flush(self):
-		self.pipeline.execute()
+		if not self._in_transaction:
+			raise RedisError('not in transaction')
+		self._in_transaction = False
+		if not self.pipeline.command_stack:
+			self.pipeline.reset()
+		else:
+			self.pipeline.execute()
 
 	def reset(self):
+		self._in_transaction = False
 		self.pipeline.reset()
 
 	def watch(self, *keys):
 		self.pipeline.watch(*keys)
+
+	# --------------- other ops ---------------
+	def scan_iter(self, match=None, count=None):
+		return self._redis.scan_iter(match=match, count=count)
+
+	def incr(self, key, amount=1):
+		return self._redis.incr(key, amount)
+
+	def exists(self, name):
+		return self._redis.exists(name)
+
+	def delete(self, *names):
+		if not self._in_transaction:
+			self._redis.delete(*names)
+		else:
+			self.pipeline.delete(*names)
 
 	# --------------- hash map ---------------
 	def hget(self, name, key, watch=True):
@@ -34,10 +79,16 @@ class RedisContext(object):
 		return self._redis.hgetall(name)
 
 	def hset(self, name, key, value):
-		self.pipeline.hset(name, key, value)
+		if not self._in_transaction:
+			self._redis.hset(name, key, value)
+		else:
+			self.pipeline.hset(name, key, value)
 
 	def hmset(self, name, mapping):
-		self.pipeline.hmset(name, mapping)
+		if not self._in_transaction:
+			self._redis.hmset(name, mapping)
+		else:
+			self.pipeline.hmset(name, mapping)
 
 
 class RedisSingleton(type):

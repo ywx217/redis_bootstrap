@@ -36,6 +36,7 @@ class SubModel(object):
 
 class ObjectSubModel(SubModel, dict):
 	__metaclass__ = ModelMetaclass
+	IS_NONE = '__is_none'
 
 	def __init__(self):
 		SubModel.__init__(self)
@@ -56,13 +57,22 @@ class ObjectSubModel(SubModel, dict):
 		self[key] = value
 
 	def save_mapping(self):
-		save_map = {}
+		save_map = {
+			self.IS_NONE: 0,
+		}
 		for field in self.__fields__:
 			field.save(save_map, self)
 		return save_map
 
 	@classmethod
+	def save_none(cls):
+		return {cls.IS_NONE: 1}
+
+	@classmethod
 	def load_mapping(cls, mapping):
+		is_none = bool(int(mapping.get(cls.IS_NONE, 0)))
+		if is_none:
+			return None
 		obj = cls()
 		for field in cls.__fields__:
 			field.load(mapping, obj)
@@ -166,16 +176,16 @@ class ListModel(ContainerSubModel, list):
 		obj = cls()
 		length = int(mapping.get(cls.FN_LENGTH, 0))
 		if not length:
-			return
+			return []
 		obj.extend((None,) * length)
 		field = cls.VAL_FIELD
 		for i in xrange(length):
 			field.var_name = i
 			field.redis_key = str(i)
 			field.load(mapping, obj)
-		for i, v in enumerate(obj):
-			if v is None:
-				raise ValueError('%s[%d] is None' % (cls.__name__, i))
+		# for i, v in enumerate(obj):
+		# 	if v is None:
+		# 		raise ValueError('%s[%d] is not initialized' % (cls.__name__, i))
 		return obj
 
 
@@ -258,6 +268,8 @@ class Model(dict):
 
 	def save(self, redis_context):
 		# save kv using hmset
+		if not redis_context.is_in_transaction():
+			raise ValueError('Saving model out of transaction.')
 		save_map = self.save_mapping()
 		save_map = flatten(save_map)
 		redis_context.hmset(self.__name, save_map)
@@ -271,10 +283,12 @@ class Model(dict):
 		return save_map
 
 	@classmethod
-	def load(cls, redis_context, index, read_only=False):
+	def load(cls, redis_context, index, read_only=False, can_be_none=False):
 		# load from redis using hgetall
 		name = cls.get_name(index)
 		m = redis_context.hgetall(name, watch=not read_only)
+		if can_be_none and not m:
+			return None
 		m = inflate(m)
 		return cls.load_mapping(m, index, read_only)
 
@@ -284,3 +298,17 @@ class Model(dict):
 		for field in cls.__fields__:
 			field.load(mapping, obj)
 		return obj
+
+	@classmethod
+	def watch_keys(cls, redis_context, *indexes):
+		indexes = map(cls.get_name, indexes)
+		return redis_context.watch(*indexes)
+
+	@classmethod
+	def exists(cls, redis_context, index):
+		return redis_context.exists(cls.get_name(index))
+
+	@classmethod
+	def delete(cls, redis_context, *indexes):
+		indexes = map(cls.get_name, indexes)
+		return redis_context.delete(*indexes)

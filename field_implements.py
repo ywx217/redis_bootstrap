@@ -55,7 +55,7 @@ class StrField(PrimitiveField):
 class SubModelField(Field):
 	IS_MODEL = True
 
-	def __init__(self, redis_key, model_class, default=DEFAULT_PLACEHOLDER, default_factory=DEFAULT_PLACEHOLDER):
+	def __init__(self, redis_key, model_class, default=None, default_factory=DEFAULT_PLACEHOLDER):
 		super(SubModelField, self).__init__(redis_key, default, default_factory)
 		self.model_class = model_class
 		if not issubclass(model_class, SubModel):
@@ -64,7 +64,12 @@ class SubModelField(Field):
 	def save(self, save_map, obj):
 		if self.redis_key is DEFAULT_PLACEHOLDER:
 			return
-		save_map[self.redis_key] = obj[self.var_name].save_mapping()
+		val = obj[self.var_name]
+		if val is None:
+			if hasattr(self.model_class, 'save_none'):
+				save_map[self.redis_key] = self.model_class.save_none()
+			return
+		save_map[self.redis_key] = val.save_mapping()
 
 	def convert(self, val):
 		if val is None:
