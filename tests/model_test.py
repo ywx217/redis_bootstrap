@@ -121,6 +121,23 @@ class ModelTest(BaseTest):
 		self.assertEqual(model.val_int_map, loaded_model.val_int_map)
 		self.assertEqual(model.val_str_map, loaded_model.val_str_map)
 
+	def testContainerModelLoad(self):
+		with self.context:
+			model = ContainerModel.load_mapping({}, 1, False)
+			model.val_str_list.extend(map(str, [1, 2, 3]))
+			model.save(self.context)
+
+		model = ContainerModel.load(self.context, 1, read_only=False, can_be_none=True)
+		with self.context:
+			model.val_int_list.extend([1, 2, 3])
+			del model.val_str_list[2]
+			model.save(self.context)
+
+		loaded_model = ContainerModel.load(self.context, 1, read_only=True)
+		self.assertEqual(model.val_int_list, loaded_model.val_int_list)
+		self.assertEqual(2, len(loaded_model.val_str_list))
+		self.assertEqual(3, len(loaded_model.val_int_list))
+
 	def testNestedModel(self):
 		with self.context:
 			model = NestedContainerModel.load_mapping({}, 1, False)

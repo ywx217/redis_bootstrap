@@ -176,7 +176,7 @@ class ListModel(ContainerSubModel, list):
 		obj = cls()
 		length = int(mapping.get(cls.FN_LENGTH, 0))
 		if not length:
-			return []
+			return obj
 		obj.extend((None,) * length)
 		field = cls.VAL_FIELD
 		for i in xrange(length):
