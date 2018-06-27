@@ -53,6 +53,12 @@ class RedisContext(object):
 	def incr(self, key, amount=1):
 		return self._redis.incr(key, amount)
 
+	def lpush(self, key, *values):
+		return self._redis.lpush(key, *values)
+
+	def rpop(self, key):
+		return self._redis.rpop(key)
+
 	def exists(self, name):
 		return self._redis.exists(name)
 
