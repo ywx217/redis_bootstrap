@@ -17,6 +17,9 @@ class RedisContext(object):
 	def __exit__(self, exc_type, exc_val, exc_tb):
 		self.flush()
 
+	def unsafe_get_redis(self):
+		return self._redis
+
 	def is_in_transaction(self):
 		return self._in_transaction
 
@@ -38,6 +41,7 @@ class RedisContext(object):
 			self.pipeline.reset()
 		else:
 			self.pipeline.execute()
+			self.pipeline.reset()
 
 	def reset(self):
 		self._in_transaction = False
@@ -53,11 +57,39 @@ class RedisContext(object):
 	def incr(self, key, amount=1):
 		return self._redis.incr(key, amount)
 
+	def set(self, key, value, ex=None, px=None, nx=False, xx=False):
+		if not self._in_transaction:
+			return self._redis.set(key, value, ex, px, nx, xx)
+		return self.pipeline.set(key, value, ex, px, nx, xx)
+
+	def get(self, key, watch=False):
+		if watch:
+			self.pipeline.watch(key)
+		return self._redis.get(key)
+
 	def lpush(self, key, *values):
 		return self._redis.lpush(key, *values)
 
 	def rpop(self, key):
 		return self._redis.rpop(key)
+
+	def lrem(self, name, count, value):
+		return self._redis.lrem(name, count, value)
+
+	def brpop(self, key, timeout=0):
+		return self._redis.brpop(key, timeout=timeout)
+
+	def rpush(self, key, *values):
+		return self._redis.rpush(key, *values)
+
+	def zadd(self, key, *score_and_members):
+		return self._redis.zadd(key, *score_and_members)
+
+	def zrem(self, key, *values):
+		return self._redis.zrem(key, *values)
+
+	def zrange(self, key, start, end, desc=False, withscores=False, score_cast_func=float):
+		return self._redis.zrange(key, start, end, desc=desc, withscores=withscores, score_cast_func=score_cast_func)
 
 	def exists(self, name):
 		return self._redis.exists(name)
@@ -101,8 +133,7 @@ class RedisSingleton(type):
 	_instances = {}
 
 	def __call__(cls, *args, **kwargs):
-		db_name = args[0]
-		if (cls, db_name) not in cls._instances:
+		if (cls, args) not in cls._instances:
 			cls._instances[(cls, args)] = super(RedisSingleton, cls).__call__(*args, **kwargs)
 		return cls._instances[(cls, args)]
 
@@ -110,7 +141,7 @@ class RedisSingleton(type):
 class RedisManager(object):
 	__metaclass__ = RedisSingleton
 
-	def __init__(self, host, port, db, max_connections=20):
+	def __init__(self, host, port, db, max_connections=100):
 		super(RedisManager, self).__init__()
 		pool = redis.BlockingConnectionPool(host=host, port=port, db=db, max_connections=max_connections)
 		self._redis = redis.StrictRedis(connection_pool=pool)

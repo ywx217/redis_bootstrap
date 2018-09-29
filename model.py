@@ -4,6 +4,7 @@ __author__ = 'ywx217@gmail.com'
 import inspect
 import collections
 import itertools
+import msgpack
 from .field import *
 from .utils import flatten, inflate
 
@@ -271,8 +272,14 @@ class Model(dict):
 		if not redis_context.is_in_transaction():
 			raise ValueError('Saving model out of transaction.')
 		save_map = self.save_mapping()
-		save_map = flatten(save_map)
-		redis_context.hmset(self.__name, save_map)
+		redis_context.set(self.__name, msgpack.dumps(save_map, default=str))
+
+	def save_all(self, redis_context):
+		# 全量更新
+		if not redis_context.is_in_transaction():
+			raise ValueError('Saving model out of transaction.')
+		save_map = self.save_mapping()
+		redis_context.set(self.__name, msgpack.dumps(save_map, default=str))
 
 	def save_mapping(self):
 		if self.__readonly:
@@ -286,11 +293,24 @@ class Model(dict):
 	def load(cls, redis_context, index, read_only=False, can_be_none=False):
 		# load from redis using hgetall
 		name = cls.get_name(index)
+		m = redis_context.get(name, watch=not read_only)
+		if can_be_none and not m:
+			return None
+		if m:
+			m = msgpack.loads(m)
+		else:
+			m = {}
+		return cls.load_mapping(m, index, read_only)
+
+	@classmethod
+	def load_test(cls, redis_context, index, read_only=False, can_be_none=False):
+		# load from redis using hgetall
+		name = cls.get_name(index)
 		m = redis_context.hgetall(name, watch=not read_only)
 		if can_be_none and not m:
 			return None
-		m = inflate(m)
-		return cls.load_mapping(m, index, read_only)
+		m1 = inflate(m)
+		return cls.load_mapping(m1, index, read_only), name, m, m1
 
 	@classmethod
 	def load_mapping(cls, mapping, index=None, read_only=False):
@@ -311,4 +331,16 @@ class Model(dict):
 	@classmethod
 	def delete(cls, redis_context, *indexes):
 		indexes = map(cls.get_name, indexes)
+		if not indexes:
+			return 0
 		return redis_context.delete(*indexes)
+
+	@classmethod
+	def scan_iter(cls, redis_context, count=None, read_only=True, match_pattern=':*'):
+		for key in redis_context.scan_iter(match=cls.MODEL_NAME + match_pattern, count=count):
+			if key:
+				index = key[len(cls.MODEL_NAME) + 1:]
+				obj = cls.load(redis_context, index, read_only=read_only, can_be_none=True)
+				if obj:
+					yield obj
+

@@ -98,22 +98,25 @@ class ModelTest(BaseTest):
 	def testContainerModel(self):
 		with self.context:
 			model = ContainerModel.load_mapping({}, 1, False)
+			model.val_int_map[1] = 1
 			self.assertEqual([], model.val_int_list)
 			self.assertEqual([], model.val_str_list)
+			self.assertEqual(1, len(model.val_int_map))
 			model.save(self.context)
 		loaded_model = ContainerModel.load(self.context, 1, True)
 		self.assertEqual([], loaded_model.val_int_list)
 		self.assertEqual([], loaded_model.val_str_list)
-		self.assertEqual({}, loaded_model.val_int_map)
+		self.assertEqual({1: 1}, loaded_model.val_int_map)
 		self.assertEqual({}, loaded_model.val_str_map)
 
+		model = ContainerModel.load(self.context, 1, False)
 		with self.context:
-			model = ContainerModel.load_mapping({}, 1, False)
 			model.val_int_list.extend([1, 2, 3])
 			model.val_str_list.extend(map(str, [1, 2, 3]))
 			model.val_int_map[10] = 10
+			del model.val_int_map[1]
 			model.val_str_map['10'] = '10'
-			model.save(self.context)
+			model.save_all(self.context)
 
 		loaded_model = ContainerModel.load(self.context, 1, True)
 		self.assertEqual(model.val_int_list, loaded_model.val_int_list)
@@ -210,6 +213,22 @@ class ModelTest(BaseTest):
 		self.assertEqual(5, loaded_model.val_list[0].val_int)
 		self.assertIsNone(loaded_model.val_list[1])
 		self.assertIsNone(loaded_model.val_list[2])
+
+	def testContainerWithSubModelEmptyFirst(self):
+		with self.context:
+			model = ContainerWithSubModel.load_mapping({}, 1, False)
+			model.save(self.context)
+
+		model = ContainerWithSubModel.load(self.context, 1, False, False)
+		with self.context:
+			sub_model = PrimitiveSubModel()
+			sub_model.val_int = 100
+			model.val_list.append(sub_model)
+			model.save_all(self.context)
+
+		loaded_model = ContainerWithSubModel.load(self.context, 1, True)
+		self.assertEqual(1, len(loaded_model.val_list))
+		self.assertEqual(100, loaded_model.val_list[0].val_int)
 
 	def testMultiInheritance(self):
 		with self.context:
